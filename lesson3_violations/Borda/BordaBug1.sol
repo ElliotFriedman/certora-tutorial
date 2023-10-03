@@ -18,7 +18,7 @@ contract Borda is IBorda{
 
     function vote(address f, address s, address t) public override {
         require(!_voted[msg.sender], "this voter has already cast its vote");
-        require( f != s || f != t || s != t, "candidates are not different"); //got the condition wrong
+        require( f != s && f != t && s != t, "candidates are not different"); //got the condition wrong
         _voted[msg.sender] = true;
         voteTo(f, 3);
         voteTo(s, 2);

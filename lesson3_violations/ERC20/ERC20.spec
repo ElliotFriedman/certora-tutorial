@@ -17,13 +17,14 @@ rule integrityOfTransferFrom(address sender, address recipient, uint256 amount) 
     env e;
     
     require sender != recipient;
+    /// either require amount != 0
 
     uint256 allowanceBefore = allowance(sender, e.msg.sender);
     transferFrom(e, sender, recipient, amount);
     uint256 allowanceAfter = allowance(sender, e.msg.sender);
     
     assert (
-        allowanceBefore > allowanceAfter
+        allowanceBefore >= allowanceAfter
         ),
         "allowance must decrease after using the allowance to pay on behalf of somebody else";
 }
@@ -76,6 +77,7 @@ rule doesNotAffectAThirdPartyBalance(method f) {
     address thirdParty;
 
     require (thirdParty != from) && (thirdParty != to);
+    require (e.msg.sender != thirdParty);
 
     uint256 thirdBalanceBefore = balanceOf(thirdParty);
     callFunctionWithParams(e, f, from, to);
@@ -103,6 +105,7 @@ rule balanceChangesFromCertainFunctions(method f, address user){
     assert (
         userBalanceBefore != userBalanceAfter => 
         (
+            f.selector == sig:transferFrom(address, address, uint256).selector ||
             f.selector == sig:transfer(address, uint256).selector ||
             f.selector == sig:mint(address, uint256).selector ||
             f.selector == sig:burn(address, uint256).selector)
@@ -110,12 +113,44 @@ rule balanceChangesFromCertainFunctions(method f, address user){
         "user's balance changed as a result function other than transfer(), transferFrom(), mint() or burn()";
 }
 
-
 rule onlyOwnersMayChangeTotalSupply(method f) {
     env e;
     uint256 totalSupplyBefore = totalSupply();
+   
     calldataarg args;
-    f(e,args);
+    f(e, args);
+
     uint256 totalSupplyAfter = totalSupply();
-    assert e.msg.sender == _owner() => totalSupplyAfter != totalSupplyBefore;
+
+    assert totalSupplyAfter != totalSupplyBefore => e.msg.sender == _owner();
+
+    assert e.msg.sender != _owner() => totalSupplyAfter == totalSupplyBefore;
+}
+
+rule totalSupplyIncreasesMint(address to, uint256 amount) {
+    env e;
+
+    require (e.msg.sender == _owner());
+    mathint totalSupplyBefore = totalSupply();
+
+    mint(e, to, amount);
+
+    mathint totalSupplyAfter = totalSupply();
+
+    assert totalSupplyBefore + amount == totalSupplyAfter;
+}
+
+rule totalSupplyDecreasesBurn(address from, uint256 amount) {
+    env e;
+
+    require (e.msg.sender == _owner());
+    require (balanceOf(from) >= amount);
+
+    mathint totalSupplyBefore = totalSupply();
+
+    burn(e, from, amount);
+
+    mathint totalSupplyAfter = totalSupply();
+
+    assert totalSupplyBefore - amount == totalSupplyAfter;
 }

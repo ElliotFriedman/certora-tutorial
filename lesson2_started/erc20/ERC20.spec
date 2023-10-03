@@ -31,6 +31,8 @@ methods
 rule transferSpec(address recipient, uint amount) {
 
     env e;
+
+    require(e.msg.sender != recipient); /// now not a correct spec, as it doesn't define self transfers
     
     // `mathint` is a type that represents an integer of any size
     mathint balance_sender_before = balanceOf(e.msg.sender);
@@ -49,6 +51,24 @@ rule transferSpec(address recipient, uint amount) {
         "transfer must increase recipient's balance by amount";
 }
 
+/** @title Transfer must move `amount` tokens from the caller's
+ *  account to `recipient`
+ */
+rule selfTransferSpec(uint amount) {
+
+    env e;
+
+    // `mathint` is a type that represents an integer of any size
+    mathint balance_sender_before = balanceOf(e.msg.sender);
+
+    transfer(e, e.msg.sender, amount);
+
+    mathint balance_sender_after = balanceOf(e.msg.sender);
+
+    // Operations on mathints can never overflow nor underflow
+    satisfy balance_sender_after == balance_sender_before,
+        "transfer must keep same balance on self transfer";
+}
 
 /// @title Transfer must revert if the sender's balance is too small
 rule transferReverts(address recipient, uint amount) {

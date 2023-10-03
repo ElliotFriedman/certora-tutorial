@@ -25,7 +25,11 @@ methods
 
 
 /// @title If `approve` changes a holder's allowance, then it was called by the holder
-rule onlyHolderCanChangeAllowance(address holder, address spender, method f) {
+rule onlyHolderCanChangeAllowance(address holder, address spender, method f)
+filtered {
+    f -> !f.isView &&
+    f.selector != sig:transferFrom(address, address, uint).selector
+} {
 
     // The allowance before the method was called
     mathint allowance_before = allowance(holder, spender);
@@ -37,7 +41,7 @@ rule onlyHolderCanChangeAllowance(address holder, address spender, method f) {
     // The allowance after the method was called
     mathint allowance_after = allowance(holder, spender);
 
-    assert allowance_after > allowance_before => e.msg.sender == holder,
+    assert allowance_after != allowance_before => e.msg.sender == holder,
         "only the sender can change its own allowance";
 
     // Assert that if the allowance changed then `approve` or `increaseAllowance` was called.
@@ -49,4 +53,12 @@ rule onlyHolderCanChangeAllowance(address holder, address spender, method f) {
         )
     ),
     "only approve and increaseAllowance can increase allowances";
+    assert (
+        allowance_after < allowance_before =>
+        (
+            f.selector == sig:approve(address, uint).selector ||
+            f.selector == sig:decreaseAllowance(address, uint).selector
+        )
+    ),
+    "only approve and decreaseAllowance can decrease allowances";
 }

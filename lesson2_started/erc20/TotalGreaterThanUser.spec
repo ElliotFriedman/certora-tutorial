@@ -61,4 +61,8 @@ rule totalSupplyAfterMintWithPrecondition(address account, uint256 amount) {
     
     // Verify that the total supply of the system is at least the current balance of the account.
     assert totalAfter >= userBalanceAfter, "total supply is less than a user's balance ";
+    /// you can do it this way 
+    // assert assert_uint256(totalBefore + amount) == to_mathint(totalAfter), "total supply incorrectly incremented";
+    /// but this is the preferred method
+    assert totalBefore + amount == to_mathint(totalAfter), "total supply incorrectly incremented";
 }

@@ -51,10 +51,12 @@ rule integrityPoints(address f, address s, address t) {
     uint256 f_points = points(f);
     uint256 s_points = points(s);
     uint256 t_points = points(t);
+
     vote(e, f, s, t);
-    assert to_mathint(points(f)) == f_points + 3 &&
-           to_mathint(points(s)) == s_points + 2 &&
-           to_mathint(points(t)) == t_points + 1,   "unexpected change of points";
+
+    assert to_mathint(points(f)) == f_points + 3, "unexpected change of points f";
+    assert to_mathint(points(s)) == s_points + 2, "unexpected change of points s";
+    assert to_mathint(points(t)) == t_points + 1, "unexpected change of points t";
 }
 
 /*
@@ -217,11 +219,20 @@ ghost mapping(address => uint256) points_mirror {
  init_state axiom forall address c. points_mirror[c] == 0;
 } 
 
+ghost mapping(address => mathint) vote_count_mirror {
+ init_state axiom forall address c. vote_count_mirror[c] == 0;
+} 
+
 ghost mathint countVoters {
     init_state axiom countVoters == 0;
 }
+
 ghost mathint sumPoints {
     init_state axiom sumPoints == 0;
+}
+
+ghost bool correctVotedStateTransition {
+    init_state axiom correctVotedStateTransition == true;
 }
 
 /* update ghost on changes to _points */
@@ -234,10 +245,14 @@ hook Sload uint256 curr_point _points[KEY address a]  STORAGE {
   require points_mirror[a] == curr_point;
 }
 
+/* update ghost on changes to _voted */
 hook Sstore _voted[KEY address a] bool val (bool old_val) STORAGE {
-  countVoters = countVoters +1;
-}
+    countVoters = countVoters +1;
 
+    correctVotedStateTransition = (old_val == false) && (val == true) && correctVotedStateTransition;
+
+    vote_count_mirror[a] = vote_count_mirror[a] + 1;
+}
 
 rule resolvabilityCriterion(address f, address s, address t, address tie) {
     env e;
@@ -254,3 +269,16 @@ rule resolvabilityCriterion(address f, address s, address t, address tie) {
 */
 invariant sumOfPoints() 
     sumPoints == countVoters * 6; 
+
+invariant onlyVoteOnce(address c) 
+    vote_count_mirror[c] <= 1 {
+        preserved {
+            requireInvariant boolToNumber(c);
+        }
+    }
+
+invariant boolToNumber(address c)
+    (voted(c) => vote_count_mirror[c] == 1) && (!voted(c) => vote_count_mirror[c] == 0);
+
+invariant validVotedStateTransition()
+    correctVotedStateTransition;
