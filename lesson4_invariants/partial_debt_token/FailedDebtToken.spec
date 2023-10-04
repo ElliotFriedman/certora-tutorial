@@ -12,4 +12,10 @@ methods {
 
 /// @title Collateral is never less than the balance
 invariant collateralCoversBalance(address account)
-    collateralOf(account) >= balanceOf(account);
+    collateralOf(account) >= balanceOf(account)
+    {
+        preserved transferDebt(address recipient) with (env e)
+        {
+            requireInvariant collateralCoversBalance(e.msg.sender);
+        }
+    }

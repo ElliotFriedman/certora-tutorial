@@ -395,6 +395,7 @@ contract ERC20 is IERC20, IERC20Metadata {
     ) internal virtual {}
 
     function deposit() external payable {
+        require(msg.sender != address(0));
         _balances[msg.sender] += msg.value;
     }
 

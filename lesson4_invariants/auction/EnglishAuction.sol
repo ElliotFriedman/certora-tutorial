@@ -66,26 +66,29 @@ contract EnglishAuction {
     bool public ended;
 
     address public highestBidder;
+    uint256 public immutable MINIMUM_BID;
     uint public highestBid;
     mapping(address => uint) public bids;
     mapping(address => mapping(address => bool)) public operators;
 
     /// @param _nft the auctioned NFT
     /// @param _erc20 the token to be used for bidding
-    /// @param _startingBid minimal bid value
+    /// @param _minimumBid minimal bid value
     constructor(
         address _nft,
         address _erc20,
         uint _nftId,
-        uint _startingBid
+        uint _minimumBid
     ) {
+        require(_minimumBid != 0);
+
         nft = IERC721(_nft);
         nftId = _nftId;
 
         token = IERC20(_erc20);
 
         seller = payable(msg.sender);
-        highestBid = _startingBid;
+        MINIMUM_BID = _minimumBid;
     }
 
     /// Start the auction
@@ -129,7 +132,9 @@ contract EnglishAuction {
         highestBidder = bidder;
         highestBid = bids[highestBidder];
 
+        require(bids[highestBidder] > MINIMUM_BID, "less than min bid");
         require(bids[highestBidder] > previousBid, "new high value < highest");
+
         emit Bid(bidder, amount);
     }
 
